@@ -38,7 +38,7 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
         invest_df["tickets"] = np.floor(invest_df["money_alloc"] / invest_df["price"])
         invest_df["used"] = invest_df["tickets"] * invest_df["price"]
         used = invest_df["used"].sum()
-        revenue = use * odds
+        revenue = used * odds
         remain = budget - used
 
         st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue"]])
