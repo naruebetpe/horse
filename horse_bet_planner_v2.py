@@ -16,7 +16,7 @@ for i in range(num_horses):
     with col1:
         odds = st.number_input(f"📈 ราคาต่อรอง ม้า {i+1}", min_value=1.0, value=50.0, step=1.0, key=f"odds_{i}")
     with col2:
-        price = st.number_input(f"🎫 ราคาตั๋ว ม้า {i+1}", min_value=1.0, value=10.0, step=1.0, key=f"price_{i}")
+        price = st.number_input(f"🎫 ราคาตั๋ว ม้า {i+1}", min_value=1.0, value=20.0, step=1.0, key=f"price_{i}")
     with col3:
         name = st.text_input(f"🐴 ชื่อม้า {i+1}", value=f"ม้า {i+1}", key=f"name_{i}")
     data.append({"number": i+1, "name": name, "odds": odds, "price": price})
@@ -38,9 +38,10 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
         invest_df["tickets"] = np.floor(invest_df["money_alloc"] / invest_df["price"])
         invest_df["used"] = invest_df["tickets"] * invest_df["price"]
         used = invest_df["used"].sum()
+        revenue = odds * tickets
         remain = budget - used
 
-        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used"]])
+        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue"]])
         st.success(f"💸 ใช้ไปแล้ว {used:.2f} บาท / งบคงเหลือ: {remain:.2f} บาท")
 
         if not other_df.empty and remain >= other_df["price"].min():
