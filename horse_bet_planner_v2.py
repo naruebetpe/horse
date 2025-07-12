@@ -38,10 +38,10 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
         invest_df["tickets"] = np.floor(invest_df["money_alloc"] / invest_df["price"])
         invest_df["used"] = invest_df["tickets"] * invest_df["price"]
         used = invest_df["used"].sum()
-        revenue = odds * tickets
+        
         remain = budget - used
 
-        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue"]])
+        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used"]])
         st.success(f"💸 ใช้ไปแล้ว {used:.2f} บาท / งบคงเหลือ: {remain:.2f} บาท")
 
         if not other_df.empty and remain >= other_df["price"].min():
