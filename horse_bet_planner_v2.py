@@ -50,7 +50,8 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
             other_df["tickets"] = np.floor(remain / other_df["price"])
             other_df = other_df[other_df["tickets"] > 0]
             other_df["used"] = other_df["tickets"] * other_df["price"]
-            st.dataframe(other_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used"]])
+            other_df["revenue"] = other_df["used"] * df["odds"]
+            st.dataframe(other_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue"]])
             st.info(f"🎁 ใช้งบสำหรับเสี่ยงดวง: {other_df['used'].sum():.2f} บาท")
             used += other_df['used'].sum()
 
