@@ -27,6 +27,7 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
     df["approx_prob"] = 1 / df["odds"]
     df = df.sort_values(by="approx_prob", ascending=False)
 
+    # 1. เลือกม้าจน prob รวม ≥ 60%
     selected = []
     total_prob = 0.0
     for _, row in df.iterrows():
@@ -36,31 +37,26 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
         total_prob += row["approx_prob"]
 
     if total_prob < 0.6:
-        st.error("⚠️ ไม่สามารถรวมความน่าจะเป็น ≥ 60% จากข้อมูลที่กรอกได้")
+        st.warning("⚠️ รวมความน่าจะเป็นยังไม่ถึง 60%")
     else:
         invest_df = pd.DataFrame(selected)
 
-        # กระจายเงินให้ถูกตัวไหนก็คุ้มทุนหรือขาดทุนน้อยที่สุด
-        # สูตรเฉลี่ยตาม prob / (odds - 1)
-        invest_df["weight"] = invest_df["approx_prob"] / (invest_df["odds"] - 1)
-        invest_df["weight"] /= invest_df["weight"].sum()
-
-        invest_df["money_alloc"] = invest_df["weight"] * budget
-        invest_df["tickets"] = np.floor(invest_df["money_alloc"] / invest_df["price"])
+        # 2. คำนวณจำนวนตั๋วเพื่อให้ถูกตัวไหนก็ได้เงินคืน ≈ งบ
+        invest_df["tickets"] = np.floor(budget / (invest_df["odds"] * invest_df["price"]))
         invest_df["used"] = invest_df["tickets"] * invest_df["price"]
-        invest_df["revenue"] = invest_df["tickets"] * invest_df["price"] * invest_df["odds"]
+        invest_df["revenue_if_win"] = invest_df["tickets"] * invest_df["price"] * invest_df["odds"]
         used = invest_df["used"].sum()
         remain = budget - used
 
-        st.markdown("## ✅ แผนแทง: โอกาสรวม ≥ 60% พร้อมกระจายเพื่อคืนทุน")
-        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue"]])
+        st.markdown("## ✅ แผนกระจายแบบคืนทุนทุกตัวที่แทง")
+        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue_if_win"]])
         st.success(f"💸 ใช้ไปแล้ว {used:.2f} บาท / คงเหลือ {remain:.2f} บาท")
 
-        # วิเคราะห์ผลลัพธ์
+        # ตรวจผล
         winner = invest_df[invest_df["number"] == winning_number]
         if not winner.empty:
             gain = float(winner["tickets"]) * float(winner["price"]) * float(winner["odds"])
-            st.success(f"🏆 แทงถูกม้าเบอร์ {winning_number}! ได้เงิน {gain:.2f} บาท")
+            st.success(f"🏆 แทงถูกม้าเบอร์ {winning_number}! ได้รับเงิน {gain:.2f} บาท")
         else:
             gain = 0
             st.error("😢 ไม่ได้แทงม้าที่ชนะ")
@@ -71,9 +67,9 @@ if st.button("🚀 วิเคราะห์และวางแผนแท�
         else:
             st.warning(f"📉 ขาดทุนสุทธิ: {-profit:.2f} บาท")
 
-        max_loss_pct = (used - min(invest_df["revenue"])) / budget * 100
-        if max_loss_pct <= 20:
-            st.info(f"✅ แผนนี้ขาดทุนสูงสุดไม่เกิน {max_loss_pct:.2f}% ตามเงื่อนไขที่ตั้งไว้")
-        else:
-            st.warning(f"⚠️ แผนนี้อาจขาดทุนสูงสุดถึง {max_loss_pct:.2f}% ซึ่งเกิน 20%")
-
+        if used > 0:
+            loss_pct = max(0, -profit / used * 100)
+            if loss_pct <= 20:
+                st.info(f"✅ ขาดทุนสูงสุดไม่เกิน 20% ({loss_pct:.2f}%)")
+            else:
+                st.warning(f"⚠️ ขาดทุนสูงสุดอาจเกิน 20% ({loss_pct:.2f}%)")
