@@ -14,9 +14,9 @@ data = []
 for i in range(num_horses):
     col1, col2, col3 = st.columns(3)
     with col1:
-        odds = st.number_input(f"📈 ราคาต่อรอง ม้า {i+1}", min_value=1.0, value=50.0, step=1.0, key=f"odds_{i}")
+        odds = st.number_input(f"📈 ราคาต่อรอง ม้า {i+1}", min_value=1.0, value=10.0, step=1.0, key=f"odds_{i}")
     with col2:
-        price = st.number_input(f"🎫 ราคาตั๋ว ม้า {i+1}", min_value=1.0, value=20.0, step=1.0, key=f"price_{i}")
+        price = st.number_input(f"🎫 ราคาตั๋ว ม้า {i+1}", min_value=1.0, value=50.0, step=1.0, key=f"price_{i}")
     with col3:
         name = st.text_input(f"🐴 ชื่อม้า {i+1}", value=f"ม้า {i+1}", key=f"name_{i}")
     data.append({"number": i+1, "name": name, "odds": odds, "price": price})
