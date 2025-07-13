@@ -1,75 +1,81 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 
-st.title("🐎 แอปวิเคราะห์แทงม้าอัจฉริยะ (พร้อมคำนวณกำไร/ขาดทุน)")
+st.title("เว็บวิเคราะห์แทงม้า (Horse Betting Analyzer)")
 
-st.markdown("### ➤ กำหนดจำนวนม้าและงบประมาณ")
-num_horses = st.number_input("จำนวนม้า", min_value=2, max_value=50, value=10)
-budget = st.number_input("งบประมาณรวม (บาท)", min_value=1.0, value=500.0, step=10.0)
-winning_number = st.number_input("กรอกเบอร์ม้าที่ชนะ (ถ้ามี)", min_value=1, max_value=50, value=1, step=1)
+st.markdown("""
+กรอกข้อมูลม้าต่าง ๆ เพื่อคำนวณความน่าจะเป็นที่ปรับแล้ว, EV, และ % เดิมพันด้วย Kelly Criterion
+""")
 
-st.markdown("### ➤ กรอกข้อมูลม้าแต่ละตัว")
-data = []
+# จำนวนม้าที่จะวิเคราะห์
+num_horses = st.number_input("จำนวนม้าที่ต้องการวิเคราะห์", min_value=1, max_value=10, value=3, step=1)
+
+def calc_implied_prob(odds):
+    if odds <= 0:
+        return 0
+    return 1 / odds
+
+def adjust_probability(base_prob, form_pct, weight, track_condition):
+    prob = base_prob
+    prob += (form_pct - 50) * 0.002
+    if weight > 55:
+        prob -= (weight - 55) * 0.01
+    elif weight < 50:
+        prob += (50 - weight) * 0.005
+    if track_condition == "ดี":
+        prob += 0.02
+    elif track_condition == "แย่":
+        prob -= 0.02
+    prob = max(0, min(prob, 1))
+    return prob
+
+def calc_ev(prob, odds, stake=1):
+    payout = odds * stake
+    ev = prob * payout - (1 - prob) * stake
+    return ev
+
+def calc_kelly(prob, odds):
+    b = odds - 1
+    q = 1 - prob
+    numerator = b * prob - q
+    if numerator <= 0:
+        return 0
+    return numerator / b
+
+horses = []
+
 for i in range(num_horses):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        odds = st.number_input(f"📈 ราคาต่อรอง ม้า {i+1}", min_value=1.0, value=10.0, step=1.0, key=f"odds_{i}")
-    with col2:
-        price = st.number_input(f"🎫 ราคาตั๋ว ม้า {i+1}", min_value=1.0, value=50.0, step=1.0, key=f"price_{i}")
-    with col3:
-        name = st.text_input(f"🐴 ชื่อม้า {i+1}", value=f"ม้า {i+1}", key=f"name_{i}")
-    data.append({"number": i+1, "name": name, "odds": odds, "price": price})
+    st.markdown(f"### ม้าตัวที่ {i+1}")
+    name = st.text_input(f"ชื่อม้า {i+1}", key=f"name_{i}")
+    odds = st.number_input(f"ราคาต่อรอง (Odds) ของม้า {i+1}", min_value=1.0, step=0.1, format="%.2f", key=f"odds_{i}")
+    form_pct = st.slider(f"ฟอร์มย้อนหลัง (%) ของม้า {i+1}", min_value=0, max_value=100, value=50, key=f"form_{i}")
+    weight = st.number_input(f"น้ำหนักที่แบก (กก.) ของม้า {i+1}", min_value=40.0, max_value=70.0, step=0.5, value=55.0, key=f"weight_{i}")
+    track_condition = st.selectbox(f"สภาพสนามสำหรับม้า {i+1}", ["ดี", "กลาง", "แย่"], key=f"track_{i}")
 
-df = pd.DataFrame(data)
+    base_prob = calc_implied_prob(odds)
+    adjusted_prob = adjust_probability(base_prob, form_pct, weight, track_condition)
+    ev = calc_ev(adjusted_prob, odds)
+    kelly_fraction = calc_kelly(adjusted_prob, odds)
 
-if st.button("🚀 วิเคราะห์และวางแผนแทง"):
-    df["approx_prob"] = 1 / df["odds"]
-    df = df.sort_values(by="approx_prob", ascending=False)
+    horses.append({
+        "ชื่อม้า": name,
+        "Odds": odds,
+        "ฟอร์ม (%)": form_pct,
+        "น้ำหนัก (กก.)": weight,
+        "สภาพสนาม": track_condition,
+        "ความน่าจะเป็นพื้นฐาน": round(base_prob, 4),
+        "ความน่าจะเป็นปรับแล้ว": round(adjusted_prob, 4),
+        "EV ต่อ 1 บาท": round(ev, 4),
+        "Kelly (%)": round(kelly_fraction * 100, 2)
+    })
 
-    # 1. เลือกม้าจน prob รวม ≥ 60%
-    selected = []
-    total_prob = 0.0
-    for _, row in df.iterrows():
-        if total_prob >= 0.6:
-            break
-        selected.append(row)
-        total_prob += row["approx_prob"]
+df = pd.DataFrame(horses)
+st.markdown("## ผลการวิเคราะห์ม้าแต่ละตัว")
+st.dataframe(df)
 
-    if total_prob < 0.6:
-        st.warning("⚠️ รวมความน่าจะเป็นยังไม่ถึง 60%")
-    else:
-        invest_df = pd.DataFrame(selected)
-
-        # 2. คำนวณจำนวนตั๋วเพื่อให้ถูกตัวไหนก็ได้เงินคืน ≈ งบ
-        invest_df["tickets"] = np.floor(budget / (invest_df["odds"] * invest_df["price"]))
-        invest_df["used"] = invest_df["tickets"] * invest_df["price"]
-        invest_df["revenue_if_win"] = invest_df["tickets"] * invest_df["price"] * invest_df["odds"]
-        used = invest_df["used"].sum()
-        remain = budget - used
-
-        st.markdown("## ✅ แผนกระจายแบบคืนทุนทุกตัวที่แทง")
-        st.dataframe(invest_df[["number", "name", "odds", "price", "approx_prob", "tickets", "used", "revenue_if_win"]])
-        st.success(f"💸 ใช้ไปแล้ว {used:.2f} บาท / คงเหลือ {remain:.2f} บาท")
-
-        # ตรวจผล
-        winner = invest_df[invest_df["number"] == winning_number]
-        if not winner.empty:
-            gain = float(winner["tickets"]) * float(winner["price"]) * float(winner["odds"])
-            st.success(f"🏆 แทงถูกม้าเบอร์ {winning_number}! ได้รับเงิน {gain:.2f} บาท")
-        else:
-            gain = 0
-            st.error("😢 ไม่ได้แทงม้าที่ชนะ")
-
-        profit = gain - used
-        if profit >= 0:
-            st.success(f"💰 กำไรสุทธิ: {profit:.2f} บาท")
-        else:
-            st.warning(f"📉 ขาดทุนสุทธิ: {-profit:.2f} บาท")
-
-        if used > 0:
-            loss_pct = max(0, -profit / used * 100)
-            if loss_pct <= 20:
-                st.info(f"✅ ขาดทุนสูงสุดไม่เกิน 20% ({loss_pct:.2f}%)")
-            else:
-                st.warning(f"⚠️ ขาดทุนสูงสุดอาจเกิน 20% ({loss_pct:.2f}%)")
+st.markdown("""
+### คำแนะนำ
+- เลือกแทงม้าที่ EV > 0  
+- Kelly (%) คือ % ของทุนที่ควรแทง (เช่น 5 หมายถึง แทง 5% ของเงินทุนทั้งหมด)  
+- อย่าลงเงินเกิน Kelly เพื่อควบคุมความเสี่ยง
+""")
